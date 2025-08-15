@@ -1,0 +1,2 @@
+Initial error: 7.03
+Final error: 0.40

@@ -1,0 +1,29 @@
+name: fusionpose_env
+channels:
+- robostack-staging
+- defaults
+- conda-forge
+dependencies:
+- python=3.11.9
+- ros-noetic-desktop=1.5.0
+- ca-certificates=2024.9.24
+- openssl=3.3.0
+- gtsam=4.2.0
+- compilers=1.7.0
+- cmake=3.22.1
+- pkg-config=0.29.2
+- make=4.3
+- ninja=1.10.2
+- colcon-common-extensions=0.3.0
+- catkin_tools=0.8.2
+- rosdep=0.24.0
+- pandas=2.2.1
+- bleak=0.22.1
+- scipy=1.13.1
+- tbb=2021.12.0
+- tbb-devel=2021.12.0
+- tbb4py=2021.8.0
+- pip:
+    - opencv-contrib-python=4.9.0.80
+    - tzdata=2024.1
+    - fpdf

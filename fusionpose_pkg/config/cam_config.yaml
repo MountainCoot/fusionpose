@@ -1,0 +1,117 @@
+pkg_name: fusionpose_pkg # The name of the package
+config_file: 'config/cam_config.yaml'
+
+acquisition: # Configuration for camera acquisition
+  debug: False
+  master_camera: 'baumer1' # in case of master-slave configuration, which camera is the master
+  baumer1: # camera specific configuration
+    backend: 'neoapi' # Baumer camera uses NeoAPI (other option is 'opencv')
+    triggered_daq: True # Use trigger functionality of baumer camera
+    identifier: "700011277154" # identifier of camera
+    fps: 20 # frames per second
+    width: 2464 # width of camera image
+    height: 2048 # height of camera image
+    settings_file: src\files\camera_settings\baumer_settings.json # exposure settings
+    calibration_file: src\files\calibrations\baumer1\calibration.json # intrinsic calibration
+    gravity_transform_file: src\files\gravity_transforms\baumer1.txt # transform between camera and gravity vector for proper fusion
+    publish: True # publish frames as ROS topics
+    subscribe: False # instead of acquiring frames from hardware, subscribe to /baumer1/stream topic
+    extrinsics_file: src\files\extrinsics\baumer1.json # in case of multiple cameras, intrinsics are defined here
+
+  opencv_camera: # example of how to use opencv camera
+    backend: 'opencv'
+    idx: 0 # OpenCV takes an index
+    width: 2720 # width of camera image
+    height: 1536 # height of camera image
+    fps: 20 # frames per second
+    settings_file: src\files\camera_settings\opencv_settings.json # exposure settings
+    calibration_file: src\files\calibrations\opencv\calibration.json # intrinsic calibration
+    gravity_transform_file: src\files\gravity_transforms\opencv.txt # transform between camera and gravity vector for proper fusion
+    publish: True # publish frames as ROS topics
+    subscribe: False # instead of acquiring frames from hardware, subscribe to /opencv_camera/stream topic
+
+marker_tracker: # Configuration for the marker tracker node
+  debug: False
+  enabled: True # if False, will only run image acquisition
+  launch_imu_acquisition: False # automatically launch IMU acquisition from marker_tracker
+  launch_fusion: True # automatically launch fusion from marker_tracker
+  fusion_exclude_oids: [] # list of OIDs to exclude from fusion
+  oid_files_path: 'src/files/oid_files' # path to OID file configurations
+  detect_full_frame_interval: 0.5 # how often the full frame is processes [s]
+  marker_calibration: # configuration for calibration of new fiducial objects
+    enabled: False # if True, will run calibration and not marker tracking
+    path: 'src\files\rest\marker_calibrations\sample_oid\calibration_frames' # where to store frames
+    ids_to_calibrate: [76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86] # which ArUco IDs to consider
+
+
+imu: # Configuration for the IMU acquisition node
+  debug: False
+  latency: 0.020 # average delay per imu, finetune with autocalibration
+
+fusion: # Configuration for the fusion node
+  debug: True
+  replay: # in case fusion is performed from bag file for analysis
+    # NOTE: If you want to use bag replay, cd into the fusionpose_pkg dir and run directly 
+    # the fusion_node.py from there in your ros environment (i.e., python nodes/fusion_node.py)
+    # otherwise there will be path errors!
+    enabled: True # enable replay (is overwritten to False if node is run via ROS)
+    oid_filter: 35 # which OID to analyze
+    get_tf_from_bag: True # by default, transforms are loaded from /tf_static topic
+    bag_dir: 'C:\Users\pdz_admin\Documents' # dir to bag to replay
+    bag_name: 'recording.bag' # name of bag to replay
+    show_position: True # open position plot after replay
+    show_orientation: False # open orientation plot after replay
+    show_3d: False # open 3D plot after replay
+    export_bag: True # export bag after replay
+    append_to_bag: False # do not overwrite export bag but actually append to it
+    # start: 11.5 # select start time [s]
+    # stop: 15 # select stop time [s]
+
+  auto_calibration: # Configuration for automatic time offset calibration
+    enabled: True # enable automatic calibration
+    bag_dir: 'src/files/oid_autocalib' # where calibration bags are stored
+    pose_freq_des: 20 # desired pose frequency (MUST CORRESPOND TO CAMERA FPS)
+    imu_freq_des: 100 # desired IMU frequency (MUST CORRESPOND TO IMU FPS)
+    bag_duration_s: 20 # duration to record of calibration bag [s]
+    rec_interval_s: 1000000000 # how often to re-calibrate [s]
+    vicon2gt: # vicon2gt package settings
+      optimizer:
+        maxIterations: 100 # max iterations of LM solver
+      estimate:
+        toff_vicon_to_imu: True # estimate time offset 
+
+  world_frame: 'gravity' # world coordinate frame
+  output_frame: 'baumer1' # in which frame output should be transformed
+  save_dir: 'output' # where plots are stored
+
+  preintegration: # imu fusion configuration
+    gravity: [0.0, 0.0, -9.81]
+    use_2nd_order_coriolis: False 
+    omega_coriolis: [0.0, 0.0, 0.0]
+    min_imu_integration: 1 # min number of imu measurements to enable fusion with a new pose measurement
+    bias_n_avg: 1 # additionally average bias (not recommended, i.e. = 1)
+
+  sigmas:
+    pose_pos: [2.e-3, 2.e-3, 8.e-3] # 1e-3 * M_PI/180, position noise from camera
+    pose_rot: [0.0174533, 0.0174533, 0.0349066] # 1e-2*M_PI/180, orientation noise from camera
+
+    ds: 10 # a multiplication factor to easily scale values below
+    acc: [2.e-2, 2.e-2, 2.e-2] # accelerometer noise
+    gyro: [5.e-3, 5.e-3, 5.e-3] # gyroscope noise
+    gyro_bias_evolution: [3.e-3, 3.e-3, 3.e-3] # gyroscope bias evolution
+    acc_bias_evolution: [1.e-2, 1.e-2, 1.e-2] # accelerometer bias evolution
+
+  init_sigmas: # initial uncertainty on states
+    pose: [1,1,1,1,1,1]
+    vel: [1,1,1]
+    bias: [1,1,1,0.2,0.2,0.2]
+
+  optimizer:
+    method: 'FIXED_LAG' # optimization method, use fixed lag for real time 
+    fixed_lag_time: 0.12 # incorporates at least 2 future camera frames (at 20fps + some margin)
+
+  initial_state: # initial values of states
+    bias:
+      acc: [0.0, 0.0, 0.0]
+      gyro: [0.0, 0.0, 0.0]
+  
